@@ -445,8 +445,11 @@ class AsyncTransport(Transport):
             if not self._sniffing_task.done():
                 return False
             # If there was a previous run we collect the sniffing task's
-            # result as it could have failed with an exception.
-            self._sniffing_task.result()
+            # result as it could have failed with an exception. Clear the
+            # reference first so a failed task doesn't prevent future sniffs.
+            task = self._sniffing_task
+            self._sniffing_task = None
+            task.result()
 
         return (
             time.monotonic() - self._last_sniffed_at >= self._min_delay_between_sniffing

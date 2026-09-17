@@ -644,6 +644,38 @@ async def test_sniff_error_resets_lock_and_last_sniffed_at():
     assert t._sniffing_task.done()
 
 
+@pytest.mark.parametrize(
+    "error_type", [ConnectionTimeout, TransportError, asyncio.CancelledError]
+)
+@pytest.mark.asyncio
+async def test_failed_background_sniff_can_recover(error_type):
+    error = error_type("sniff failed")
+    discovered_node = NodeConfig("http", "localhost", 81)
+    sniff_callback = mock.Mock(side_effect=[error, [discovered_node]])
+    t = AsyncTransport(
+        [NodeConfig("http", "localhost", 80)],
+        node_class=AsyncDummyNode,
+        sniff_before_requests=True,
+        sniff_callback=sniff_callback,
+    )
+
+    response = await t.perform_request("GET", "/")
+    assert response.meta.status == 200
+    failed_task = t._sniffing_task
+    await asyncio.wait([failed_task])
+
+    # The completed task's error should be reported only once.
+    with pytest.raises(error_type):
+        await t.perform_request("GET", "/")
+
+    response = await t.perform_request("GET", "/")
+    assert response.meta.status == 200
+    assert t._sniffing_task is not failed_task
+    await t._sniffing_task
+    assert sniff_callback.call_count == 2
+    assert discovered_node in {node.config for node in t.node_pool.all()}
+
+
 async def _empty_sniff(*_):
     # Used in the below test to mock an empty sniff attempt
     await asyncio.sleep(0)
