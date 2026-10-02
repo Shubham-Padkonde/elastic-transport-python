@@ -442,8 +442,9 @@ class Transport:
                     if last_response is not None:
                         return last_response
 
-                    e.errors = tuple(errors)
-                    raise
+                    raise type(e)(
+                        e.message, errors=(e,) + tuple(reversed(errors))
+                    ) from None
                 else:
                     sleep_time = backoff_time(
                         attempt, retry_backoff_base, retry_backoff_cap

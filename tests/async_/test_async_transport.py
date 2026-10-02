@@ -155,7 +155,7 @@ async def test_request_will_fail_after_x_retries():
         await t.perform_request("GET", "/")
 
     assert 4 == len(t.node_pool.get().calls)
-    assert len(e.value.errors) == 3
+    assert len(e.value.errors) == 4
     assert all(isinstance(error, ConnectionError) for error in e.value.errors)
 
 
@@ -186,13 +186,14 @@ async def test_retry_on_timeout(retry_on_timeout):
     if retry_on_timeout:
         with pytest.raises(ConnectionError) as e:
             await t.perform_request("GET", "/")
-        assert len(e.value.errors) == 1
-        assert isinstance(e.value.errors[0], ConnectionTimeout)
+        assert len(e.value.errors) == 2
+        assert isinstance(e.value.errors[0], ConnectionError)
+        assert isinstance(e.value.errors[1], ConnectionTimeout)
 
     else:
         with pytest.raises(ConnectionTimeout) as e:
             await t.perform_request("GET", "/")
-        assert len(e.value.errors) == 0
+        assert len(e.value.errors) == 1
 
 
 @pytest.mark.anyio
@@ -260,7 +261,7 @@ async def test_request_retry_backoff():
             await t.perform_request("GET", "/")
 
     assert 4 == len(t.node_pool.get().calls)
-    assert len(e.value.errors) == 3
+    assert len(e.value.errors) == 4
     assert all(isinstance(error, ConnectionError) for error in e.value.errors)
 
     assert mock_sleep.await_count == 3
@@ -292,7 +293,7 @@ async def test_failed_connection_will_be_marked_as_dead():
         await t.perform_request("GET", "/")
     assert 0 == len(t.node_pool._alive_nodes)
     assert 2 == len(t.node_pool._dead_nodes.queue)
-    assert len(e.value.errors) == 3
+    assert len(e.value.errors) == 4
     assert all(isinstance(error, ConnectionError) for error in e.value.errors)
 
 

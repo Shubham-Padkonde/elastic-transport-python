@@ -141,7 +141,7 @@ def test_request_will_fail_after_x_retries():
         t.perform_request("GET", "/")
 
     assert 1 == len(t.node_pool.get().calls)
-    assert len(e.value.errors) == 0
+    assert len(e.value.errors) == 1
 
     # max_retries=3
     t = Transport(
@@ -161,7 +161,7 @@ def test_request_will_fail_after_x_retries():
         t.perform_request("GET", "/")
 
     assert 4 == len(t.node_pool.get().calls)
-    assert len(e.value.errors) == 3
+    assert len(e.value.errors) == 4
     assert all(isinstance(error, ConnectionError) for error in e.value.errors)
 
     # max_retries=2 in perform_request()
@@ -169,7 +169,7 @@ def test_request_will_fail_after_x_retries():
         t.perform_request("GET", "/", max_retries=2)
 
     assert 7 == len(t.node_pool.get().calls)
-    assert len(e.value.errors) == 2
+    assert len(e.value.errors) == 3
     assert all(isinstance(error, ConnectionError) for error in e.value.errors)
 
 
@@ -199,13 +199,14 @@ def test_retry_on_timeout(retry_on_timeout):
     if retry_on_timeout:
         with pytest.raises(ConnectionError) as e:
             t.perform_request("GET", "/")
-        assert len(e.value.errors) == 1
-        assert isinstance(e.value.errors[0], ConnectionTimeout)
+        assert len(e.value.errors) == 2
+        assert isinstance(e.value.errors[0], ConnectionError)
+        assert isinstance(e.value.errors[1], ConnectionTimeout)
 
     else:
         with pytest.raises(ConnectionTimeout) as e:
             t.perform_request("GET", "/")
-        assert len(e.value.errors) == 0
+        assert len(e.value.errors) == 1
 
 
 def test_retry_on_status():
@@ -272,7 +273,7 @@ def test_request_retry_backoff():
             t.perform_request("GET", "/")
 
     assert 4 == len(t.node_pool.get().calls)
-    assert len(e.value.errors) == 3
+    assert len(e.value.errors) == 4
     assert all(isinstance(error, ConnectionError) for error in e.value.errors)
 
     assert mock_sleep.call_count == 3
@@ -303,7 +304,7 @@ def test_failed_connection_will_be_marked_as_dead():
         t.perform_request("GET", "/")
     assert 0 == len(t.node_pool._alive_nodes)
     assert 2 == len(t.node_pool._dead_nodes.queue)
-    assert len(e.value.errors) == 3
+    assert len(e.value.errors) == 4
     assert all(isinstance(error, ConnectionError) for error in e.value.errors)
 
 
