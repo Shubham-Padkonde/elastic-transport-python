@@ -212,13 +212,16 @@ class SerializerCollection:
     ):
         if serializers is None:
             serializers = DEFAULT_SERIALIZERS
+        self.serializers = {
+            mimetype.lower().strip(): serializer
+            for mimetype, serializer in serializers.items()
+        }
         try:
-            self.default_serializer = serializers[default_mimetype]
+            self.default_serializer = self.serializers[default_mimetype.lower().strip()]
         except KeyError:
             raise ValueError(
                 f"Must configure a serializer for the default mimetype {default_mimetype!r}"
             ) from None
-        self.serializers = dict(serializers)
 
     def dumps(self, data: Any, mimetype: Optional[str] = None) -> bytes:
         return self.get_serializer(mimetype).dumps(data)
@@ -232,6 +235,7 @@ class SerializerCollection:
             serializer = self.default_serializer
         else:
             mimetype, _, _ = mimetype.partition(";")
+            mimetype = mimetype.lower().strip()
             try:
                 serializer = self.serializers[mimetype]
             except KeyError:

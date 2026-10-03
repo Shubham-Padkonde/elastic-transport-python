@@ -150,6 +150,45 @@ def test_text_asterisk_works_for_all_text_types():
     assert serializers.dumps("{}", "text/html") == b"{}"
 
 
+@pytest.mark.parametrize(
+    "mimetype",
+    [
+        "Application/JSON",
+        "APPLICATION/JSON; charset=UTF-8",
+        "application/json ; charset=UTF-8",
+    ],
+)
+def test_json_mimetype_normalization(mimetype):
+    assert serializers.loads(b'{"key":1}', mimetype) == {"key": 1}
+    assert serializers.dumps({"key": 1}, mimetype) == b'{"key":1}'
+
+
+@pytest.mark.parametrize("mimetype", ["Text/HTML", "TEXT/PLAIN ; charset=UTF-8"])
+def test_text_wildcard_mimetype_normalization(mimetype):
+    assert serializers.loads(b"text", mimetype) == "text"
+    assert serializers.dumps("text", mimetype) == b"text"
+
+
+def test_custom_mimetype_normalization():
+    serializer = JsonSerializer()
+    configured = {"Application/Custom+JSON": serializer}
+    collection = SerializerCollection(
+        configured, default_mimetype="application/custom+json"
+    )
+    assert collection.get_serializer(None) is serializer
+    assert (
+        collection.get_serializer("APPLICATION/CUSTOM+JSON; charset=UTF-8")
+        is serializer
+    )
+    assert configured == {"Application/Custom+JSON": serializer}
+
+
+def test_custom_wildcard_mimetype_normalization():
+    serializer = TextSerializer()
+    collection = SerializerCollection({"TEXT/*": serializer}, default_mimetype="TEXT/*")
+    assert collection.get_serializer("text/html") is serializer
+
+
 @pytest.mark.parametrize("should_strip", [False, b"\n", b"\r\n"])
 def test_ndjson_loads(should_strip):
     serializer = NdjsonSerializer()
