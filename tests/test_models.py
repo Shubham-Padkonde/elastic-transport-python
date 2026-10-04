@@ -77,6 +77,33 @@ def test_headers_frozen():
 
 
 @pytest.mark.parametrize(
+    ["items", "expected"],
+    [
+        ([], []),
+        ([("Accept", "application/json")], ["application/json"]),
+        (
+            [("Accept", "application/json"), ("X-Request-Id", "123")],
+            ["application/json", "123"],
+        ),
+        ([("X-First", "same"), ("X-Second", "same")], ["same", "same"]),
+        (
+            [("Accept", "text/plain"), ("accept", "application/json"), ("X-Id", "123")],
+            ["application/json", "123"],
+        ),
+    ],
+)
+def test_header_values(items, expected):
+    headers = HttpHeaders(items)
+    for frozen in (False, True):
+        if frozen:
+            headers.freeze()
+        values = headers.values()
+        assert list(values) == expected
+        assert len(values) == len(headers)
+        assert all(value in values for value in expected)
+
+
+@pytest.mark.parametrize(
     ["headers", "string"],
     [
         ({"field": "value"}, "{'field': 'value'}"),

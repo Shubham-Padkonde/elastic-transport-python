@@ -142,7 +142,7 @@ class HttpHeaders(MutableMapping[str, str]):
         return self._internal.keys()
 
     def values(self) -> ValuesView[str]:
-        return {"": v for _, v in self._internal.values()}.values()
+        return {k: v for k, v in self._internal.values()}.values()
 
     def items(self) -> Collection[Tuple[str, str]]:  # type: ignore[override]
         return [(key, val) for _, (key, val) in self._internal.items()]
